@@ -1,42 +1,37 @@
-<p align="center">
-    <a href="https://polypheny.org/">
-        <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/polypheny/Admin/master/Logo/logo-white-text_cropped.png">
-            <img width='50%' alt="Light: 'Resume application project app icon' Dark: 'Resume application project app icon'" src="https://raw.githubusercontent.com/polypheny/Admin/master/Logo/logo-transparent_cropped.png">
-        </picture>
-    </a>    
-</p> 
+# Implementing a New Plugin for Polypheny
 
-# Polypheny-DB
+This repo adds support for using DuckDB as a data source in Polypheny and illustrates how to create a new plugin.
 
-_Polypheny-DB_ is a self-adaptive Polystore that provides cost- and workload aware access to heterogeneous data. As a Polystore, Polypheny-DB seamlessly combines different underlying data storage engines to provide good query performance independent of the type of workload.
+Most of the code of a Polypheny plugin goes inside the plugin folder, which in our example is `plugin/duckdb-adapter`. Similar to the file structure of other plugins, there are two gradle related files under this path along with the source code.
 
-If you want to learn more about Polypheny-DB, we recommend having a look on our [website](https://polypheny.org) or on [this paper](http://dx.doi.org/10.1007/978-3-030-71055-2_2).
+One of the file is `build.gradle`, which declares plugin-specific dependencies, defines the location of source files, and guides gradle to build this plugin. For example, in our duckdb-adapter, we have the following line in the dependencies section which states that this plugin requires the JDBC driver of DuckDB.
 
-## Getting Started ##
-The easiest way to setup Polypheny-DB is to use a [release](https://github.com/polypheny/Polypheny-DB/releases/latest). Alternatively, you can use [Polypheny Control](https://github.com/polypheny/Polypheny-Control) to automatically build Polypheny-DB.
+```
+implementation group: 'org.duckdb', name: 'duckdb_jdbc', version: '0.10.1'
+```
 
-## Roadmap ##
-See the [open issues](https://github.com/polypheny/Polypheny-DB/issues) for a list of proposed features (and known issues).
+The other one gradle-related file is `gradle.properties`, which defines various variables of a plugin, including version, id, class, provider information, categories etc.
 
-## Contributing ##
-We highly welcome your contributions to Polypheny-DB. If you would like to contribute, please fork the repository and submit your changes as a pull request. Please consult our [Admin Repository](https://github.com/polypheny/Admin) for guidelines and additional information.
+In our duckdb-adapter example, some variables defined in `gradle.properties`.
 
-Please note that we have a [code of conduct](https://github.com/polypheny/Admin/blob/master/CODE_OF_CONDUCT.md). Please follow it in all your interactions with the project.
+```
+pluginVersion = 0.0.1
 
-## Credits ##
-_Polypheny-DB_ builds upon the great work of several other projects:
+pluginId = duckdb-adapter
+pluginClass = org.polypheny.db.duckdb.sources.DuckdbPlugin
+pluginProvider = The Polypheny Project
+pluginDependencies = jdbc-adapter-framework, sql-language
+...
+pluginCategories = source
+...
+```
 
-* [Apache Avatica](https://calcite.apache.org/avatica/): A framework for building database drivers
-* [Apache Calcite](https://calcite.apache.org/): A framework for building databases
-* [HSQLDB](http://hsqldb.org/): A relational database written in Java
-* [JavaCC](https://javacc.org/): A parser generator
-* [Javalin](https://javalin.io/): A framework for building web services
-* [Project Lombok](https://projectlombok.org/): A library which provides annotations for tedious tasks
+Here `plugInCategories` defines the type of a plugin. If the plugin is a data store, then the value should be set to `store`. If the plugin adds a new query interface to Polypheny, then the value should be set to `interface`.
 
-Except for the first two, those projects are used "as is" and integrated as a library. _Apache Avatica_ we [forked](https://github.com/polypheny/Avatica) and made some Polypheny-DB specific adjustments. From _Apache Calcite_ we use parts of the code as foundation for Polypheny-DB.
+Polypheny provides many features to help the creation of new plugins. For example, the abstract class `AbstractJdbcSource` simplifies the process of adding a new relational data source.
 
-## Acknowledgements
-The Polypheny-DB project is supported by the Swiss National Science Foundation (SNSF) under the contract no. 200021_172763.
+When the implementation is finished, one needs to adapt the `settings.gradle` file, which is not located in the plugin folder, to include the new plugin. In our case, we added the following line:
 
-## License ##
-The Apache 2.0 License
+```
+include 'plugins:duckdb-adapter'
+```
