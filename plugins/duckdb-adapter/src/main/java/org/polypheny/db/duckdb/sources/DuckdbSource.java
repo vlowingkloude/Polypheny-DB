@@ -110,7 +110,7 @@ public class DuckdbSource extends AbstractJdbcSource {
     @Override
     public List<PhysicalEntity> createTable( Context context, LogicalTableWrapper logical, AllocationTableWrapper allocation ) {
         PhysicalTable table = adapterCatalog.createTable(
-                logical.table.getNamespaceName(),
+                settings.get( "database" ),
                 logical.table.name,
                 logical.columns.stream().collect( Collectors.toMap( c -> c.id, c -> c.name ) ),
                 logical.table,
