@@ -37,6 +37,7 @@ import org.polypheny.db.catalog.entity.allocation.AllocationTableWrapper;
 import org.polypheny.db.catalog.entity.logical.LogicalTableWrapper;
 import org.polypheny.db.catalog.entity.physical.PhysicalEntity;
 import org.polypheny.db.catalog.entity.physical.PhysicalTable;
+import org.polypheny.db.plugins.PolyPluginManager;
 import org.polypheny.db.prepare.Context;
 import org.polypheny.db.sql.language.SqlDialect;
 import org.polypheny.db.util.PolyphenyHomeDirManager;
@@ -48,28 +49,33 @@ import org.polypheny.db.util.PolyphenyHomeDirManager;
         description = "DuckDB is an embedded OLAP RDBMS",
         usedModes = DeployMode.EMBEDDED,
         defaultMode = DeployMode.EMBEDDED)
-@AdapterSettingList(name = "type", options = { "Memory", "File" }, defaultValue = "Memory")
+@AdapterSettingString(name = "path", defaultValue = "", description = "The path to a DuckDB database file, in-memory database is currently not supported")
+@AdapterSettingString(name = "tables", defaultValue = "", description = "List of tables which should be imported. The names must to be separated by a comma.")
+@AdapterSettingString(name = "database", defaultValue = "")
 public class DuckdbSource extends AbstractJdbcSource {
 
     String connectionUrl;
 
     public DuckdbSource( final long storeId, final String uniqueName, final Map<String, String> settings ) {
         super( storeId, uniqueName, settings, "org.duckdb.DuckDBDriver", PostgresqlSqlDialect.DEFAULT, false );
+        this.connectionFactory = createConnectionFactory( settings, dialect, "org.duckdb.DuckDBDriver" );
+        try { // need this to load duckdb driver
+            Class.forName("org.duckdb.DuckDBDriver");
+        } catch (Exception e) {
+            System.out.println(e.toString());
+        }
     }
 
 
     @Override
     protected ConnectionFactory createConnectionFactory( final Map<String, String> settings, SqlDialect dialect, String driverClass ) {
         BasicDataSource dataSource = new BasicDataSource();
-
-        if ( settings.get( "type" ).equals( "Memory" ) ) {
-            connectionUrl = "jdbc:duckdb:";
-        } else {
-            File path = PolyphenyHomeDirManager.getInstance().registerNewFolder("data/duckdb/" + getAdapterId());
-            connectionUrl = "jdbc:duckdb:" + path.getAbsolutePath();
-        }
+        connectionUrl = "jdbc:duckdb:" + settings.get( "path" );
         dataSource.setUrl( connectionUrl );
-        return new TransactionalConnectionFactory( dataSource, 1, dialect );
+        dataSource.setDriverClassName( "org.duckdb.DuckDBDriver" );
+        dataSource.setDefaultAutoCommit( false );
+        dataSource.setDriverClassLoader( PolyPluginManager.getMainClassLoader() );
+        return new TransactionalConnectionFactory( dataSource, 25, dialect );
     }
 
 
@@ -92,7 +98,7 @@ public class DuckdbSource extends AbstractJdbcSource {
 
     @Override
     protected boolean requiresSchema() {
-        return true;
+        return false;
     }
 
     @Override
